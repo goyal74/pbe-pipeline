@@ -1,0 +1,6 @@
+ViennaRNA>=2.6
+numpy
+matplotlib
+pandas
+streamlit
+biopython

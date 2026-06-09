@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "PBE Pipeline: in-silico lncRNA-RBP interface mapping and disruptor nomination"
+abstract: >-
+  A lightweight, open-source pipeline that maps the protein-binding element (PBE)
+  on a disease long non-coding RNA from public data (CLIP footprints or a known RBP
+  recognition motif) plus RNA secondary-structure prediction, and nominates ranked
+  steric-block / decoy disruptor candidates. Part of the lncRNA-RBP scaffold-disruption
+  platform submitted to the NIH TRDNT Challenge.
+type: software
+authors:
+  - family-names: Goyal
+    given-names: Ravi
+    affiliation: "Epigenuity LLC"
+license: MIT
+version: "1.0.0"
+date-released: "2026-06-09"
+repository-code: "https://github.com/<your-org>/pbe-pipeline"   # update after you create the repo
+# doi: 10.5281/zenodo.XXXXXXX                                    # fill in after Zenodo mints it
+keywords:
+  - lncRNA
+  - RNA-binding protein
+  - RNA structure
+  - antisense oligonucleotide
+  - RNA-targeting therapeutics
