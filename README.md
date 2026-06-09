@@ -1,5 +1,10 @@
 # PBE Pipeline — in-silico target & interface nomination (Stage 1)
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20615550.svg)](https://doi.org/10.5281/zenodo.20615550)
+&nbsp;[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+> Archived & citable: **https://doi.org/10.5281/zenodo.20615550**
+
 Maps the protein-binding element (PBE) on a disease lncRNA and nominates candidate
 steric-block / decoy disruptors, **using only public data and standard tools**. This
 generates the kind of preliminary in-silico result that supports the Phase I feasibility

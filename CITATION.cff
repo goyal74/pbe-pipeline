@@ -15,8 +15,9 @@ authors:
 license: MIT
 version: "1.0.0"
 date-released: "2026-06-09"
-repository-code: "https://github.com/<your-org>/pbe-pipeline"   # update after you create the repo
-# doi: 10.5281/zenodo.XXXXXXX                                    # fill in after Zenodo mints it
+repository-code: "https://github.com/goyal74/pbe-pipeline"
+doi: "10.5281/zenodo.20615550"
+url: "https://doi.org/10.5281/zenodo.20615550"
 keywords:
   - lncRNA
   - RNA-binding protein
