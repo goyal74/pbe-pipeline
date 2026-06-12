@@ -148,4 +148,6 @@ if go:
             "interaction/disruption experimentally (RIP/CLIP, SHAPE, EMSA/MST, cell assays).")
 else:
     st.write("Configure inputs in the sidebar and click **Run analysis**. "
-             "Example: paste the NORAD transcript and use motif **UGUANAUA** (Pumilio PRE).")
+             "Examples: paste the **NORAD** transcript with motif **UGUANAUA** (Pumilio PRE, "
+             "lncRNA benchmark); or a **CUG-repeat** region with motif **YGCY** (MBNL1, "
+             "myotonic dystrophy) - the pipeline re-derives the (CAG)n steric-block disruptor.")
