@@ -26,7 +26,7 @@ st.set_page_config(page_title="PBE Pipeline · Epigenuity LLC", layout="wide")
 NAVY, BLUE, AMBER, TEAL, RED = "#1F3864", "#2E6DB4", "#E0922E", "#2E9B8F", "#C0504D"
 
 st.title("RNA–protein interface mapping & disruptor nomination")
-st.markdown("**Developed by Epigenuity LLC** &nbsp;·&nbsp; "
+st.markdown("**Developed by Ravi Goyal, MD, PhD · Epigenuity LLC** &nbsp;·&nbsp; "
             "[github.com/goyal74/pbe-pipeline](https://github.com/goyal74/pbe-pipeline) "
             "&nbsp;·&nbsp; DOI [10.5281/zenodo.20615550](https://doi.org/10.5281/zenodo.20615550)")
 st.caption("Map the protein-binding element (PBE) on a disease RNA (lncRNA or toxic "
@@ -233,5 +233,5 @@ else:
              "RNAfold structure with the disruption site marked. No motif or sequence needed.")
 
 st.divider()
-st.caption("PBE Pipeline · Developed by **Epigenuity LLC** (Tucson, AZ) · © 2026 Epigenuity LLC · "
-           "MIT License · Cite: doi.org/10.5281/zenodo.20615550")
+st.caption("PBE Pipeline · Developed by **Ravi Goyal, MD, PhD, Epigenuity LLC** (Tucson, AZ) · "
+           "© 2026 Epigenuity LLC · MIT License · Cite: doi.org/10.5281/zenodo.20615550")
