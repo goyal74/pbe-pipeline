@@ -111,6 +111,49 @@ def motif_scan(seq, motif):
         sites.append((m.start(), m.end()))
     return sites
 
+# ---------- curated RBP recognition-motif library (scan with NO user input) ----------
+# IUPAC consensus motifs for major, disease-relevant sequence-specific RBPs
+# (RNAcompete / RBNS / CISBP-RNA / ATtRACT consensus). This lets the tool nominate
+# protein-binding elements from a transcript alone — the user supplies only the
+# lncRNA name; the partner RBP is discovered, not specified.
+RBP_MOTIFS = {
+    "PUM1/2 (PRE)":       "UGUANAUA",
+    "MBNL1":              "YGCY",
+    "ELAVL1/HuR (ARE)":   "UAUUUAU",
+    "PTBP1":              "UCUUCU",
+    "TARDBP/TDP-43":      "UGUGUG",
+    "HNRNPA1":            "UAGGGW",
+    "QKI (QRE)":          "ACUAAY",
+    "NOVA1/2":            "YCAYNNYCAY",
+    "CELF1/CUGBP1":       "UGUUUG",
+    "MSI1 (Musashi)":     "UAGUAG",
+    "SRSF1 (ESE)":        "RGAAGA",
+    "PCBP1/HNRNPK":       "CCCUCCC",
+    "U2AF2 (Py-tract)":   "UUUUUUU",
+    "SF1/KHSRP (G-rich)": "GGGUGG",
+}
+
+def scan_rbp_library(seq, motifs=None):
+    """Scan a transcript against the known-RBP motif library.
+    Returns (all_sites, hits_by_rbp): all_sites is a flat [(start,end), ...];
+    hits_by_rbp maps RBP name -> [(start,end), ...]."""
+    motifs = motifs or RBP_MOTIFS
+    all_sites, hits_by_rbp = [], {}
+    for rbp, motif in motifs.items():
+        s = motif_scan(seq, motif)
+        if s:
+            hits_by_rbp[rbp] = s
+            all_sites.extend(s)
+    return all_sites, hits_by_rbp
+
+def rbp_labels_for_window(start, end, hits_by_rbp):
+    """Names of RBPs whose motif hits overlap the window [start, end)."""
+    out = []
+    for rbp, sites in hits_by_rbp.items():
+        if any(s < end and e > start for (s, e) in sites):
+            out.append(rbp)
+    return out
+
 # ---------- local folding accessibility (RNAplfold-style; scales to long lncRNAs) ----------
 def local_accessibility(seq, W=200, L=150, cutoff=1e-4):
     """Per-base unpaired probability from local partition folding (RNA.pfl_fold)."""

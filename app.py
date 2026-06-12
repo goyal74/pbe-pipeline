@@ -46,12 +46,18 @@ with st.sidebar:
     seq_text = st.text_area("…or paste sequence (RNA/DNA)", height=100,
                             placeholder=">my_RNA\nACGU...")
     st.divider()
-    mode = st.radio("Define the partner-RBP footprint by:",
-                    ["Recognition motif", "CLIP BED (transcript coords)"])
+    mode = st.radio("Find the protein-binding site by:",
+                    ["Auto — scan known RBP motifs (no input needed)",
+                     "One recognition motif",
+                     "CLIP BED (transcript coords)"])
+    if mode.startswith("Auto"):
+        st.caption(f"Scans the transcript against {len(pp.RBP_MOTIFS)} known RBP "
+                   "recognition motifs (PUM, MBNL, HuR, PTBP1, TDP-43, hnRNPA1, QKI, "
+                   "Nova, CELF1, …) and reports which RBP each candidate site matches.")
     motif = st.text_input("RBP motif (IUPAC)", value="UGUANAUA",
-                          help="e.g. Pumilio PRE = UGUANAUA") if mode == "Recognition motif" else None
+                          help="e.g. Pumilio PRE = UGUANAUA") if mode == "One recognition motif" else None
     peaks_file = st.file_uploader("CLIP BED (id  start  end  [name]  [score])",
-                                  type=["bed", "tsv", "txt"]) if mode != "Recognition motif" else None
+                                  type=["bed", "tsv", "txt"]) if mode.startswith("CLIP") else None
     st.divider()
     top = st.slider("PBE windows to nominate", 1, 12, 6)
     flank = st.slider("Flank around motif (nt)", 0, 30, 8)
@@ -98,7 +104,14 @@ if go:
     with st.spinner(f"Folding {n} nt and mapping the interface…"):
         # footprint
         sites = None
-        if mode == "Recognition motif":
+        hits_by_rbp = {}
+        if mode.startswith("Auto"):
+            all_sites, hits_by_rbp = pp.scan_rbp_library(seq)
+            if not all_sites:
+                st.error("No known RBP recognition-motif sites found in this transcript.")
+                st.stop()
+            peaks = [(s, e, 1.0) for (s, e) in all_sites]
+        elif mode == "One recognition motif":
             sites = pp.motif_scan(seq, motif)
             if not sites:
                 st.error(f"Motif '{motif}' not found."); st.stop()
@@ -118,11 +131,23 @@ if go:
         pbe = (pp.nominate_pbe_motif(sites, unpaired, flank=flank, top=top)
                if sites is not None else pp.nominate_pbe(cov, unpaired, top=top))
         disr = pp.design_disruptors(seq, unpaired, pbe)[:ncand]
+        # annotate each PBE window with the RBP(s) whose motif lands there (auto mode)
+        pbe_rbp = {}
+        if hits_by_rbp:
+            for (ps, pe, _) in pbe:
+                pbe_rbp[f"{ps}-{pe}"] = ", ".join(pp.rbp_labels_for_window(ps, pe, hits_by_rbp)) or "—"
 
     c1, c2, c3 = st.columns(3)
     c1.metric("Transcript length", f"{n} nt")
-    c2.metric("Footprint sites", f"{len(sites) if sites is not None else len(peaks)}")
+    c2.metric("RBPs detected" if hits_by_rbp else "Footprint sites",
+              f"{len(hits_by_rbp)}" if hits_by_rbp else f"{len(sites) if sites is not None else len(peaks)}")
     c3.metric("PBE windows", f"{len(pbe)}")
+
+    if hits_by_rbp:
+        summary = sorted(((rbp, len(s)) for rbp, s in hits_by_rbp.items()),
+                         key=lambda t: -t[1])
+        st.markdown("**Candidate RBPs found (motif hits across the transcript):** "
+                    + " · ".join(f"{rbp} ({c})" for rbp, c in summary))
 
     # figure
     x = np.arange(n)
@@ -160,9 +185,13 @@ if go:
 
     st.subheader("Top disruptor candidates")
     import pandas as pd
-    cols = ["pbe", "target_start", "target_end", "len", "target_seq_5to3",
-            "disruptor_antisense_5to3", "Tm_C_approx", "GC_pct", "target_accessibility"]
-    df = pd.DataFrame(disr)[cols]
+    df = pd.DataFrame(disr)
+    if hits_by_rbp:
+        df.insert(1, "candidate_RBP", df["pbe"].map(lambda p: pbe_rbp.get(p, "—")))
+    cols = (["pbe", "candidate_RBP"] if hits_by_rbp else ["pbe"]) + [
+        "target_start", "target_end", "len", "target_seq_5to3",
+        "disruptor_antisense_5to3", "Tm_C_approx", "GC_pct", "target_accessibility"]
+    df = df[cols]
     st.dataframe(df, use_container_width=True)
     st.download_button("Download candidates (TSV)", df.to_csv(sep="\t", index=False),
                        file_name=f"{name}_disruptors.tsv")
@@ -182,9 +211,11 @@ if go:
                 f"Predicted structure around the top disruptor site (nt {w0 + 1}–{w1})")
         c1, c2 = st.columns([3, 2])
         c1.pyplot(sfig)
+        top_rbp = pbe_rbp.get(top["pbe"], "") if hits_by_rbp else ""
         c2.markdown(
             f"**Top disruptor**\n\n"
-            f"- Target site: **nt {top['target_start'] + 1}–{top['target_end']}**\n"
+            + (f"- Candidate RBP: **{top_rbp}**\n" if top_rbp and top_rbp != "—" else "")
+            + f"- Target site: **nt {top['target_start'] + 1}–{top['target_end']}**\n"
             f"- Target (5′→3′): `{top['target_seq_5to3']}`\n"
             f"- Antisense disruptor: `{top['disruptor_antisense_5to3']}`\n"
             f"- Predicted Tm: **{top['Tm_C_approx']:.1f} °C** · GC {top['GC_pct']:.0f}%\n"
@@ -195,10 +226,11 @@ if go:
     st.info("In-silico nomination only. Confirm uniqueness by BLAST and confirm the "
             "interaction/disruption experimentally (RIP/CLIP, SHAPE, EMSA/MST, cell assays).")
 else:
-    st.write("Configure inputs in the sidebar and click **Run analysis**. "
-             "Examples: paste the **NORAD** transcript with motif **UGUANAUA** (Pumilio PRE, "
-             "lncRNA benchmark); or a **CUG-repeat** region with motif **YGCY** (MBNL1, "
-             "myotonic dystrophy) - the pipeline re-derives the (CAG)n steric-block disruptor.")
+    st.write("**Just type an lncRNA / gene name** in the sidebar (e.g. **MALAT1**, **NEAT1**, "
+             "**NORAD**) and click **Run analysis** — the app fetches the sequence, scans it "
+             "against a library of known RBP motifs to find the protein-binding sites itself, "
+             "ranks the best-disruptable site, designs the antisense disruptor, and draws the "
+             "RNAfold structure with the disruption site marked. No motif or sequence needed.")
 
 st.divider()
 st.caption("PBE Pipeline · Developed by **Epigenuity LLC** (Tucson, AZ) · © 2026 Epigenuity LLC · "
