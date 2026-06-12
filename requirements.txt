@@ -4,3 +4,4 @@ matplotlib
 pandas
 streamlit
 biopython
+requests

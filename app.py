@@ -20,6 +20,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import pbe_pipeline as pp
+import pbe_webtools as wt
 
 st.set_page_config(page_title="PBE Pipeline · Epigenuity LLC", layout="wide")
 NAVY, BLUE, AMBER, TEAL, RED = "#1F3864", "#2E6DB4", "#E0922E", "#2E9B8F", "#C0504D"
@@ -34,9 +35,16 @@ st.caption("Map the protein-binding element (PBE) on a disease RNA (lncRNA or to
 
 with st.sidebar:
     st.header("Input")
-    fa = st.file_uploader("lncRNA transcript FASTA", type=["fa", "fasta", "txt"])
-    seq_text = st.text_area("…or paste sequence (RNA/DNA)", height=120,
-                            placeholder=">my_lncRNA\nACGU...")
+    name_in = st.text_input("lncRNA / gene name (auto-fetch)",
+                            placeholder="e.g. MALAT1, NEAT1, NORAD",
+                            help="Type a name and the sequence is fetched automatically "
+                                 "from Ensembl / NCBI — no need to paste it.")
+    species = st.selectbox("Species", ["homo_sapiens", "mus_musculus", "rattus_norvegicus"],
+                           index=0, format_func=lambda s: s.replace("_", " ").title())
+    st.caption("…or provide a sequence directly:")
+    fa = st.file_uploader("Transcript FASTA", type=["fa", "fasta", "txt"])
+    seq_text = st.text_area("…or paste sequence (RNA/DNA)", height=100,
+                            placeholder=">my_RNA\nACGU...")
     st.divider()
     mode = st.radio("Define the partner-RBP footprint by:",
                     ["Recognition motif", "CLIP BED (transcript coords)"])
@@ -66,6 +74,8 @@ def parse_fasta_text(t):
     return name, "".join(s)
 
 def get_sequence():
+    if name_in.strip():
+        return wt.fetch_by_name(name_in, species)   # may raise; handled by caller
     if fa is not None:
         return parse_fasta_text(fa.getvalue().decode("utf-8", "ignore"))
     if seq_text.strip():
@@ -73,9 +83,16 @@ def get_sequence():
     return None, None
 
 if go:
-    name, seq = get_sequence()
+    try:
+        with st.spinner("Fetching sequence…" if name_in.strip() else "Reading sequence…"):
+            name, seq = get_sequence()
+    except Exception as e:
+        st.error(str(e)); st.stop()
     if not seq:
-        st.error("Provide a sequence (upload a FASTA or paste one)."); st.stop()
+        st.error("Provide an input: type a gene/lncRNA name, upload a FASTA, or paste a sequence.")
+        st.stop()
+    if name_in.strip():
+        st.success(f"Fetched **{name}** — {len(seq)} nt.")
     n = len(seq)
     use_local = local or n > 1500
     with st.spinner(f"Folding {n} nt and mapping the interface…"):
@@ -149,6 +166,32 @@ if go:
     st.dataframe(df, use_container_width=True)
     st.download_button("Download candidates (TSV)", df.to_csv(sep="\t", index=False),
                        file_name=f"{name}_disruptors.tsv")
+
+    # --- RNAfold-style structure diagram around the top disruption site ---
+    if disr:
+        top = disr[0]
+        center = (top["target_start"] + top["target_end"]) // 2
+        half = 70
+        w0, w1 = max(0, center - half), min(n, center + half)
+        sub = seq[w0:w1]
+        hl0, hl1 = max(0, top["target_start"] - w0), min(len(sub), top["target_end"] - w0)
+        st.subheader("Secondary structure at the disruption site (RNAfold)")
+        with st.spinner("Folding the disruption-site window…"):
+            sfig, sstruct, smfe = wt.structure_figure(
+                sub, hl0, hl1,
+                f"Predicted structure around the top disruptor site (nt {w0 + 1}–{w1})")
+        c1, c2 = st.columns([3, 2])
+        c1.pyplot(sfig)
+        c2.markdown(
+            f"**Top disruptor**\n\n"
+            f"- Target site: **nt {top['target_start'] + 1}–{top['target_end']}**\n"
+            f"- Target (5′→3′): `{top['target_seq_5to3']}`\n"
+            f"- Antisense disruptor: `{top['disruptor_antisense_5to3']}`\n"
+            f"- Predicted Tm: **{top['Tm_C_approx']:.1f} °C** · GC {top['GC_pct']:.0f}%\n"
+            f"- Window MFE: **{smfe:.1f} kcal/mol**\n\n"
+            f"Red nucleotides mark where the steric-block / decoy disruptor binds, "
+            f"occluding the protein-binding element without degrading the RNA.")
+
     st.info("In-silico nomination only. Confirm uniqueness by BLAST and confirm the "
             "interaction/disruption experimentally (RIP/CLIP, SHAPE, EMSA/MST, cell assays).")
 else:
